@@ -194,7 +194,10 @@ GLboolean APIENTRY_GL4ES gl4es_glIsFramebuffer(GLuint framebuffer) {
     LOAD_GLES2_OR_OES(glIsFramebuffer);
     
     errorGL();
-    return find_framebuffer(framebuffer)!=NULL;
+    if (find_framebuffer(framebuffer) != NULL)
+        return true;
+    
+    return gles_glIsFramebuffer(framebuffer);
 }
 
 GLenum APIENTRY_GL4ES gl4es_glCheckFramebufferStatus(GLenum target) {
@@ -225,6 +228,29 @@ void APIENTRY_GL4ES gl4es_glBindFramebuffer(GLenum target, GLuint framebuffer) {
     LOAD_GLES(glGetError);
 
     glframebuffer_t *fb = find_framebuffer(framebuffer);
+
+    bool is_gles = false;
+
+    if(!fb) {
+        is_gles = gl4es_glIsFramebuffer(framebuffer);
+
+        if(is_gles) {
+            gles_glBindFramebuffer(target, framebuffer);
+            
+            // track the GLES framebuffer...
+            int ret;
+            khint_t k;
+            khash_t(framebufferlist_t) *list = glstate->fbo.framebufferlist;
+            
+            k = kh_put(framebufferlist_t, list, framebuffer, &ret);
+            fb = kh_value(list, k) = malloc(sizeof(glframebuffer_t));
+            memset(fb, 0, sizeof(glframebuffer_t));
+            fb->id = framebuffer;
+            fb->n_draw = 0; // correct?
+            noerrorShim();
+        }
+    }
+
     if(!fb) {
         errorShim(GL_INVALID_VALUE);
         return;
