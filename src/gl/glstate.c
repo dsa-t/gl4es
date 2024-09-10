@@ -62,6 +62,8 @@ void CopyGLEShard(void* dst, const void* src)
 }
 
 void* NewGLState(void* shared_glstate, int es2only) {
+    printf("*** NewGLState shared_glstate %p\n", (void*) shared_glstate);
+
     glstate_t *glstate = (shared_glstate!=DEFAULT_STATE)?((glstate_t*)calloc(1, sizeof(glstate_t))):&default_glstate;
 #if defined(AMIGAOS4) || defined(__EMSCRIPTEN__)
     int def = 0;
@@ -604,6 +606,8 @@ void DeleteGLState(void* oldstate) {
 }
 
 void ActivateGLState(void* new_glstate) {
+    printf("*** ActivateGLState %p\n", (void*) new_glstate);
+
     glstate_t *newstate = (new_glstate)?(glstate_t*)new_glstate:&default_glstate;
     if(glstate == newstate) return;  // same state, nothing to do
     // check if viewport is correct
@@ -629,4 +633,90 @@ void gl_init() {
 
 void gl_close() {
  DeleteGLState(DEFAULT_STATE);
+}
+
+typedef struct {
+    void* glstate;
+} opaquectx_t;
+
+KHASH_MAP_INIT_INT(opaquectxlist_t, opaquectx_t *);
+
+khash_t(opaquectxlist_t) *opaque_contexts = NULL;
+
+khash_t(opaquectxlist_t) * get_opaquectx_list() {
+    if(!opaque_contexts) {
+        opaque_contexts = kh_init(opaquectxlist_t);
+    }
+
+    return opaque_contexts;
+}
+
+void add_opaquectx(uint32_t key, void* value) {
+    printf("*** add_opaquectx key %p value %p\n", (void*) key, value);
+
+    int ret;
+    khint_t k;
+    khash_t(opaquectxlist_t) *list = get_opaquectx_list();
+
+    k = kh_put(opaquectxlist_t, list, key, &ret);
+    opaquectx_t *sampler = kh_value(list, k) = calloc(1, sizeof(opaquectx_t));
+    sampler->glstate = value;
+
+    printf("*** add_opaquectx added node %p\n", (void*) key, sampler);
+}
+
+opaquectx_t* find_opaquectx(uint32_t key) {
+    printf("*** find_opaquectx key %p\n", (void*) key);
+
+    khint_t k;
+    khash_t(opaquectxlist_t) *list = get_opaquectx_list();
+    k = kh_get(opaquectxlist_t, list, key);
+    
+    if (k != kh_end(list)){
+        opaquectx_t* ret = kh_value(list, k);
+        printf("*** find_opaquectx ret %p\n", (void*) ret);
+        return ret;
+    }
+
+    printf("*** find_opaquectx return NULL\n");
+    return NULL;
+}
+
+void del_opaquectx(uint32_t key) {
+    printf("*** del_opaquectx key %p\n", (void*) key);
+
+    khint_t k;
+    khash_t(opaquectxlist_t) *list = get_opaquectx_list();
+    k = kh_get(opaquectxlist_t, list, key);
+    opaquectx_t* s = NULL;
+    if (k != kh_end(list)){
+        s = kh_value(list, k);
+        kh_del(opaquectxlist_t, list, k);
+    }
+    if(s) {
+        free(s);
+    }
+}
+
+void* gl4es_UsingOpaqueContext(const void* context) __attribute__((visibility("default")));
+
+void* gl4es_UsingOpaqueContext(const void* context) {
+    uint32_t key = (uint32_t)((uint64_t)context & 0xFFFFFFFF);
+    opaquectx_t *octx = find_opaquectx(key);
+
+    printf("*** gl4es_UsingOpaqueContext key %p\n", (void*) key);
+
+    if(octx) {
+        ActivateGLState(octx->glstate);
+    } else {
+        void *newglstate = DEFAULT_STATE;
+
+        if(kh_size(opaque_contexts) > 0) {
+            newglstate = NewGLState(NULL, 0);
+        }
+
+        add_opaquectx(key, newglstate);
+
+        ActivateGLState(newglstate != DEFAULT_STATE ? newglstate : NULL);
+    }
 }
