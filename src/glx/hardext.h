@@ -57,6 +57,7 @@ typedef struct _hardext {
     int highp;          // GL_OES_fragment_precision_high
     int fragdepth;      // GL_EXT_frag_depth
     int derivatives;    // GL_OES_standard_derivatives
+    int shadernonconst; // GL_EXT_shader_non_constant_global_initializers
     int shaderlod;      // GL_EXT_shader_texture_lod
     int cubelod;        // textureCubeLod doesn't need "EXT" even with GL_EXT_shader_texture_lod
     int gbm;            // EGL_KHR_platform_gbm
