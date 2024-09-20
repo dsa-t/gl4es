@@ -698,9 +698,9 @@ void del_opaquectx(uint32_t key) {
     }
 }
 
-void* gl4es_UsingOpaqueContext(const void* context) __attribute__((visibility("default")));
+void gl4es_UsingOpaqueContext(const void* context) __attribute__((visibility("default")));
 
-void* gl4es_UsingOpaqueContext(const void* context) {
+void gl4es_UsingOpaqueContext(const void* context) {
     uint32_t key = (uint32_t)((uint64_t)context & 0xFFFFFFFF);
     opaquectx_t *octx = find_opaquectx(key);
 
