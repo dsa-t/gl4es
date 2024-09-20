@@ -251,6 +251,11 @@ void GetHardwareExtensions(int notest)
     LOAD_GLES(glGetString);
     LOAD_GLES(glGetIntegerv);
     LOAD_GLES(glGetError);
+
+    // Check the GLES version
+    gles_glGetIntegerv( GL_MAJOR_VERSION, &hardext.esversion);
+    SHUT_LOGD("Detected GLES major version %d\n", hardext.esversion);
+
     // Now get extensions
     const char *Exts = (const char *) gles_glGetString(GL_EXTENSIONS);
     // Parse them!
@@ -361,7 +366,14 @@ void GetHardwareExtensions(int notest)
         S("GL_EXT_frag_depth ", fragdepth, 1);
         gles_glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &hardext.maxvattrib);
         SHUT_LOGD("Max vertex attrib: %d\n", hardext.maxvattrib);
-        S("GL_OES_standard_derivatives ", derivatives, 1);
+
+        if (hardext.esversion>2) {
+            SHUT_LOGD("Extension GL_OES_standard_derivatives is in core ES3, and so used\n");
+            hardext.derivatives = 1;
+        } else {
+            S("GL_OES_standard_derivatives ", derivatives, 1);
+        }
+
         S("GL_EXT_shader_non_constant_global_initializers ", shadernonconst, 1);
         S("GL_ARM_shader_framebuffer_fetch", shader_fbfetch, 1);
         S("GL_OES_get_program ", prgbinary, 1);
